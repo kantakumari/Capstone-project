@@ -1,0 +1,23 @@
+pipeline {
+    agent any
+    stages {
+        stage ('git intgration'){
+            steps {
+                 git credentialsId: 'git-token', url: 'git@github.com:kantakumari/Installing-docker-ansible-jenkins.git'
+  
+            }
+        }
+        stage ('install-docker'){
+            steps {
+                 //ansiblePlaybook credentialsId: 'git-token', inventory: 'ansible/dev.inv', playbook: 'ansible/tomcat.yml'
+                ansiblePlaybook credentialsId: 'ansible-key', disableHostKeyChecking: true, inventory: 'dev.inv', playbook: 'docker.yml'
+            }
+        }
+        stage ('docker-nexus'){
+            steps {
+                 //ansiblePlaybook credentialsId: 'git-token', inventory: 'ansible/dev.inv', playbook: 'ansible/tomcat.yml'
+                ansiblePlaybook credentialsId: 'ansible-key', disableHostKeyChecking: true, inventory: 'dev.inv', playbook: 'docker-nexus.yml'
+            }
+        }
+    }
+}

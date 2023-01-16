@@ -1,0 +1,23 @@
+pipeline{
+    agent any
+    stages{
+        stage('git-integration'){
+            steps {
+                git credentialsId: 'git-token', url: 'git@github.com:kantakumari/tomcat-from-ansible.git'
+            }
+        }
+        stage('tomcat'){
+            steps {
+                 //ansiblePlaybook credentialsId: 'git-token', inventory: 'ansible/dev.inv', playbook: 'ansible/tomcat.yml'
+                ansiblePlaybook credentialsId: 'ansible-key', disableHostKeyChecking: true, inventory: 'dev.inv', playbook: 'tomcat.yml'
+            }
+        }
+        stage('deployment'){
+            steps {
+                 //ansiblePlaybook credentialsId: 'git-token', inventory: 'ansible/dev.inv', playbook: 'ansible/tomcat.yml'
+                ansiblePlaybook credentialsId: 'ansible-key', disableHostKeyChecking: true, inventory: 'dev.inv', playbook: 'deploy.yml'
+            }
+        }
+         
+    }
+}

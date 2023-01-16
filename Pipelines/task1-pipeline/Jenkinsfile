@@ -1,0 +1,73 @@
+pipeline {
+    agent any
+    stages {
+        stage('poll scm') {
+            steps {
+                git credentialsId: 'git-token', url: 'git@github.com:kantakumari/spring-chat-app.git'
+            }
+        }
+        stage('mvn build') {
+            steps {
+                sh 'mvn -B -DskipTest clean package'
+            }
+        }
+        stage('mvn test') {
+            steps {
+                sh 'mvn test'
+                junit 'target/surefire-reports/*.xml'
+            }
+        }
+        stage('checkstyle') {
+            steps {
+                sh 'mvn checkstyle:checkstyle'
+                recordIssues(tools: [checkStyle(pattern: '**/checkstyle-result.xml')])
+                
+            }
+        }
+         stage('code coverage') {
+            steps {
+                jacoco()
+                
+            }
+        }
+         stage('sonar') {
+            steps {
+                sh 'mvn clean verify sonar:sonar \
+  -Dsonar.projectKey=spring-chatapp-1 \
+  -Dsonar.host.url=http://20.185.60.222:9000 \
+  -Dsonar.login=sqp_72da3e68eaab31104b27d14632828a7d57b43fd4'
+                
+            }
+        }
+        stage('docker build') {
+            steps {
+                script {
+                   sh 'mvn compile jib:dockerBuild'
+                }
+            }
+        }
+        stage('docker push'){
+            steps{
+                script {
+                    // This step should not normally be used in your script. Consult the inline help for details.
+                    withDockerRegistry(credentialsId: 'f665a017-c11f-4256-bea2-9a7bfda84f46', url: 'http://13.68.144.25:8085') {
+                   // some block
+                    sh 'mvn compile jib:build -Djib.allowInsecureRegistries=true -DsendCredentialsOverHttp'
+                    }
+                }
+            }
+        }
+        stage('nexus'){
+            steps {
+                 script {
+                 pom = readMavenPom file: "pom.xml";
+                filesByGlob = findFiles(glob: "target/*.${pom.packaging}");
+                    echo "${filesByGlob[0].name} ${filesByGlob[0].path} ${filesByGlob[0].directory} ${filesByGlob[0].length} ${filesByGlob[0].lastModified}"
+                    artifactPath = filesByGlob[0].path;
+                    }
+            //nexusArtifactUploader artifacts: [[artifactId: pom.artifactId, classifier: '', file: artifactPath, type: pom.packaging, type: 'jar']], credentialsId: 'f665a017-c11f-4256-bea2-9a7bfda84f46', groupId: pom.artifactId, nexusUrl: '13.68.144.25:8081', nexusVersion: 'nexus3', protocol: 'http', repository: 'maven-snapshots', version: pom.version
+              nexusArtifactUploader artifacts: [[artifactId: pom.artifactId, classifier: '', file: artifactPath, type: pom.packaging, type: 'jar']], credentialsId: 'f665a017-c11f-4256-bea2-9a7bfda84f46', groupId: pom.artifactId, nexusUrl: '13.68.144.25:8081', nexusVersion: 'nexus3', protocol: 'http', repository: 'maven-snapshots', version: pom.version
+            }
+        }
+    }
+}

@@ -1,0 +1,20 @@
+---
+- name: Deploy war file from nexus
+  hosts: all
+  become: true
+  tasks:
+    - name: Install lxml
+      ansible.builtin.apt:
+        name: python3-lxml
+        update_cache: yes
+    - name: Download war file
+      maven_artifact:
+        group_id: webapp
+        artifact_id: simple-app
+        version: 1.0.0
+        extension: war
+        repository_url: "http://13.68.144.25:8081/repository/simpleapp-release/"
+        username: "admin"
+        password: "admin@123"
+        dest: "/usr/share/tomcat/webapps/helloworld.war"
+        mode: "0644"
