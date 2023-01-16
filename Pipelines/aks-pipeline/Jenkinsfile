@@ -7,30 +7,24 @@ pipeline {
         CHART_NAME = 'nginx-service'        
     }
     stages {
-        stage('Poll Code Repository') {
+        stage('Pull Code from github') {
             steps {
                 git credentialsId: 'git-token', url: 'git@github.com:kantakumari/Capstone-project.git'
             }
         }
         stage('Terraform Init') {
-            when {
-                expression{action == "apply"}
-            }
             steps{
                script {
-                    dir('aks-cluster-infrastructure/') {
+                    dir('aks-cluster-terraform/') {
                         sh 'terraform init'
                     }
                 }
             }            
         }
         stage('Terraform Syntax Check') {
-            when {
-                expression{action == "apply"}
-            }            
             steps{
                script {
-                    dir('aks-cluster-infrastructure/') {
+                    dir('aks-cluster-terraform/') {
                         sh 'terraform validate'
                     }
                 }
@@ -38,9 +32,6 @@ pipeline {
         }
         
         stage('Terraform Plan') {
-            when {
-                expression{action == "apply"}
-            }
             steps{
                script {
                     dir('aks-cluster-terraform/') {
@@ -50,24 +41,18 @@ pipeline {
             }            
         }
         stage('Terraform Apply') {
-            when {
-                expression{action == "apply"}
-            }
             steps{
                script {
-                    dir('aks-cluster-infrastructure/') {
+                    dir('aks-cluster-terraform/') {
                         sh 'terraform apply --auto-approve'
                     }
                 }
             }              
         }
         stage('Configure Kubectl') {
-            when {
-                expression{action == "apply"}
-            }
             steps {
                 script {
-                    dir('aks-cluster-infrastructure/') {
+                    dir('aks-cluster-terraform/') {
                         sh'''
                         az aks get-credentials --resource-group $(terraform output -raw resource_group_name) --name $(terraform output -raw kubernetes_cluster_name)             
                         kubectl get nodes
@@ -78,9 +63,6 @@ pipeline {
             
         }        
         stage('Installing Helm Chart') {
-            when {
-                expression{action == "apply"}
-            }
             steps{
                 sh'''   
                 helm list
@@ -90,9 +72,6 @@ pipeline {
             }
         }
         stage('Verify Deployments') {
-            when {
-                expression{action == "apply"}
-            }
             steps{
                 sh'''                
                 kubectl get pods
@@ -109,12 +88,9 @@ pipeline {
         }
 
         stage("Terraform destroy"){
-            when {
-                expression{action == "destroy"}
-            }
             steps {
                 script {
-                    dir('aks-cluster-infrastructure/') {
+                    dir('aks-cluster-terraform/') {
                         sh 'terraform destroy --auto-approve'
                     }
                 }
